@@ -43,6 +43,7 @@ public:
 	double segLength;
 	double commArcLength;
 	double u;
+	int segmentNumber;
 };
 
 std::list<Point> points;
@@ -55,25 +56,30 @@ void SavePoints()
 	p.y = 0.0;
 	p.z = 0.0;
 	p.sequence = 1;
-	p.u = 0;
+	p.u = 0.0;
 	points.push_back(p);
 
 
 	p.x = 1.0;
 	p.y = 3.5;
 	p.z = 0.0;
+	p.u = 0.1;
 	p.sequence = 2;
 	points.push_back(p);
 
 	p.x = 4.8;
 	p.y = 1.8;
 	p.z = 0.0;
+	p.u = 0.2;
+
 	p.sequence = 3;
 	points.push_back(p);
 
 	p.x = 6.5;
 	p.y = 7.0;
 	p.z = 0.0;
+	p.u = 0.3;
+
 	p.sequence = 4;
 	points.push_back(p);
 
@@ -81,29 +87,38 @@ void SavePoints()
 	p.y = 3.5;
 	p.z = 0.0;
 	p.sequence = 5;
+	p.u = 0.4;
+
 	points.push_back(p);
 
 	p.x = 32.5;
 	p.y = 4.8;
 	p.z = 0.0;
 	p.sequence = 6;
+	p.u = 0.5;
 	points.push_back(p);
 
 	p.x = 33.2;
 	p.y = 2.6;
 	p.z = 0.0;
 	p.sequence = 7;
+	p.u = 0.6;
+
 	points.push_back(p);
 
 	p.x = 36.8;
 	p.y = 7.0;
 	p.z = 0.0;
+	p.u = 0.7;
+
 	p.sequence = 8;
 	points.push_back(p);
 
 	p.x = 37.8;
 	p.y = 5.0;
 	p.z = 0.0;
+	p.u = 0.8;
+
 	p.sequence = 9;
 	points.push_back(p);
 
@@ -111,12 +126,15 @@ void SavePoints()
 	p.y = 20.5;
 	p.z = 0.0;
 	p.sequence = 10;
+	p.u = 0.9;
+
 	points.push_back(p);
 
 	p.x = 41.5;
 	p.y = 21.5;
 	p.z = 0.0;
 	p.sequence = 11;
+	p.u = 1.0;
 	points.push_back(p);
 
 
@@ -126,13 +144,13 @@ void SavePoints()
 
 
 
-Point  GetPoint(int sequenceNumber)
+Point  GetPoint(double u)
 {
 	std::list<Point>::iterator it;
 	Point p;
 	for (it = points.begin(); it != points.end(); ++it)
 	{
-		if (it->sequence == sequenceNumber)
+		if (it->u == u)
 		{
 			p = *it;
 			return p;
@@ -147,7 +165,7 @@ Point  GetNewPoint(int sequenceNumber)
 	Point p;
 	std::list<Point>::iterator iter = newPoints.begin();
 	std::advance(iter, sequenceNumber);
-	
+
 	p = *iter;
 	return p;
 
@@ -171,81 +189,158 @@ double calculateB3(double u)
 	return u * u*u / 6.0f;
 }
 
+void FindArc()
+{
+	std::list<Point>::iterator it;
+	int count = 1;
+	int sequenceNo = 0;
+	std::list<Point>::iterator it;	
+	std::list<Point>::iterator iter = points.begin();
+	Point p;
+	Point p1;
+	for (it = points.begin(); it != points.end(); ++it)
+	{
+			p = *it;
+			std::advance(iter, 1);
+			p1 = *iter;
+			double segLngth = sqrt((p1.x - p.x)*(p1.x - p.x) + (p1.y - p.y)*(p1.y - p.y));
+			globcommArcLength = globcommArcLength + segLngth;
+			p1.segLength = segLngth;
+			p1.commArcLength = globcommArcLength;
+	}
+}
+
+Point GetSegNumber(double arcLength)
+{
+	std::list<Point>::iterator it;
+	Point p;
+	Point p1;
+	for (it = points.begin(); it != points.end(); ++it)
+	{
+		p = *it;
+		if (p.commArcLength < p.commArcLength)
+		{
+			return p;
+		}
+	}
+}
+double LinearInterpolation(Point p , Point p1,double arcLength)
+{
+	double val = p.u + (arcLength - p.commArcLength) / (p1.commArcLength - p.commArcLength) * (p1.u - p.u);
+    
+}
 void CalculatePoints()
 {
 	std::list<Point>::iterator it;
-
-
 	int count = 1;
 	int sequenceNo = 0;
-	for (size_t i = 0; i < points.size()-3; i++)
+	for (size_t i = 1; i <= 300; i++)
 	{
+		double d = (i*globcommArcLength) / 300;
+   		Point p1 = GetSegNumber(d);
+		Point p = GetPoint(p.u - 0.1);
+		Point p2 = GetPoint(p.u +0.1);
+		Point p3 = GetPoint(p.u + 0.2);
 
-
-		Point p = GetPoint(count);
-		sequenceNo = sequenceNo + 1;
-		p.sequence = sequenceNo;
-		newPoints.push_back(p);
-
+		double u = LinearInterpolation(p, p1, d);
+		double b0 = calculateB0(u)*p.x;
+		double b1 = calculateB1(u)*p1.x;
+		double b3 = 0.0;
+		double b2 = 0.0;
+		double x;
 		
-			Point p1 = GetPoint(count + 1);
-			Point p2;
-			Point p3;
-			if (i < points.size() - 3)
-			{
-				 p2 = GetPoint(count + 2);
-				 p3 = GetPoint(count + 3);
-			}
+			b2 = calculateB2(u)*p2.x;
+			b3 = calculateB3(u)*p3.x;
+		
+		double by0 = calculateB0(u)*p.y;
+		double by1 = calculateB1(u)*p1.y;
+		double by2 = 0;
+		double by3 = 0;
+		
+			by2 = calculateB2(u)*p2.y;
+			by3 = calculateB3(u)*p3.y;
+		
 
-			Point oldPoint=p;
-			for (int j = 0; j <= 500; j++)
-			{
+		x = b0 + b1 + b2 + b3;
+		double y = by0 + by1 + by2 + by3;
+		sequenceNo = sequenceNo + 1;
+		Point newP;
+		newP.x = x;
+		newP.y = y;
+		newP.sequence = sequenceNo;
+		newP.u = u;
+		newPoints.push_back(newP);
+	}
 
-				double u = j / 500.0;    // u is a fraction between 0 and 1
 
-				double b0 = calculateB0(u)*p.x;
-				double b1 = calculateB1(u)*p1.x;
-				double b3 = 0.0;
-				double b2 = 0.0;
-				double x;
-				if (i < points.size() - 3)
-				{
-					 b2= calculateB2(u)*p2.x;
-					 b3 =  calculateB3(u)*p3.x;
-				}
-				double by0 = calculateB0(u)*p.y;
-				double by1 =  calculateB1(u)*p1.y;
-				double by2 = 0;
-				double by3=0 ;
-				if (i < points.size() - 3)
-				{
-					 by2 = calculateB2(u)*p2.y;
-					 by3 =  calculateB3(u)*p3.y;
-				}
+	//for (size_t i = 0; i < points.size() - 3; i++)
+	//{
 
-				 x = b0 + b1 + b2 + b3;
-				double y = by0 + by1 + by2 + by3;
-				sequenceNo = sequenceNo + 1;
 
-				Point newP;
-				newP.x = x;
-				newP.y = y;
-				newP.sequence = sequenceNo;
-				newP.u = u;
+	//	Point p = GetPoint(count);
+	//	sequenceNo = sequenceNo + 1;
+	//	p.sequence = sequenceNo;
+	//	newPoints.push_back(p);
 
-				double segLngth = sqrt((newP.x - oldPoint.x)*(newP.x - oldPoint.x) + (newP.y - oldPoint.y)*(newP.y - oldPoint.y));
 
-				newP.segLength = segLngth;
-				newP.commArcLength = globcommArcLength + segLngth;
-				globcommArcLength = globcommArcLength + segLngth;
-				oldPoint = newP;
-				newPoints.push_back(newP);
+	//	Point p1 = GetPoint(count + 1);
+	//	Point p2;
+	//	Point p3;
+	//	if (i < points.size() - 3)
+	//	{
+	//		p2 = GetPoint(count + 2);
+	//		p3 = GetPoint(count + 3);
+	//	}
 
-			}
+	//	Point oldPoint = p;
+	//	for (int j = 0; j <= 500; j++)
+	//	{
 
-			count = count + 1;
-		}
-	
+	//		double u = j / 500.0;    // u is a fraction between 0 and 1
+
+	//		double b0 = calculateB0(u)*p.x;
+	//		double b1 = calculateB1(u)*p1.x;
+	//		double b3 = 0.0;
+	//		double b2 = 0.0;
+	//		double x;
+	//		if (i < points.size() - 3)
+	//		{
+	//			b2 = calculateB2(u)*p2.x;
+	//			b3 = calculateB3(u)*p3.x;
+	//		}
+	//		double by0 = calculateB0(u)*p.y;
+	//		double by1 = calculateB1(u)*p1.y;
+	//		double by2 = 0;
+	//		double by3 = 0;
+	//		if (i < points.size() - 3)
+	//		{
+	//			by2 = calculateB2(u)*p2.y;
+	//			by3 = calculateB3(u)*p3.y;
+	//		}
+
+	//		x = b0 + b1 + b2 + b3;
+	//		double y = by0 + by1 + by2 + by3;
+	//		sequenceNo = sequenceNo + 1;
+
+	//		Point newP;
+	//		newP.x = x;
+	//		newP.y = y;
+	//		newP.sequence = sequenceNo;
+	//		newP.u = u;
+
+	//		double segLngth = sqrt((newP.x - oldPoint.x)*(newP.x - oldPoint.x) + (newP.y - oldPoint.y)*(newP.y - oldPoint.y));
+
+	//		newP.segLength = segLngth;
+	//		newP.commArcLength = globcommArcLength + segLngth;
+	//		globcommArcLength = globcommArcLength + segLngth;
+	//		oldPoint = newP;
+	//		newPoints.push_back(newP);
+
+	//	}
+
+	//	count = count + 1;
+	//}
+
 }
 
 
@@ -275,6 +370,7 @@ void init()
 	//initialize before
 	initDisplay();
 	SavePoints();
+	FindArc();
 	CalculatePoints();
 }
 
@@ -292,15 +388,15 @@ void initDisplay()
 void update()
 {
 	// update your variables here
-	//sleep(1 / 60.0);	
-seqNo = seqNo + 1;
+	Sleep(1 / 60.0);	
+	seqNo = seqNo + 7;
 
 	if (seqNo >= newPoints.size())
 	{
 		seqNo = 0;
 	}
 	Point p = GetNewPoint(seqNo);
-	vel.set(p.commArcLength,p.y);
+	vel.set(p.x, p.y);
 	glutPostRedisplay();
 }
 
@@ -352,9 +448,9 @@ void display()
 	}
 	glPopMatrix();
 	glEnd();
-	
+
 	glPushMatrix();
-	glTranslatef(vel.x, vel.y,0);
+	glTranslatef(vel.x, vel.y, 0);
 	glColor3f(1, 1, 0);
 	glutSolidSphere(1.1, 23, 23);
 	glPopMatrix();
