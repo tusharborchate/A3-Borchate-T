@@ -30,12 +30,16 @@ void update();
 void reshape(int w, int h);
 void display();
 void SavePoints();
+void keyboard(unsigned char key, int x, int y);
+void special(int special_key, int x, int y);
 void FindArc();
 string error = "";
 double globcommArcLength = 0;
 int seqNo = 0;
 int frame = 1;
 int maxcount = 0;
+bool sinabolic = false;
+bool parabolic = false;
 Vector2 vel(0.0, 0.0);
 
 class Point {
@@ -420,6 +424,8 @@ void init()
 {
 	//initialize before
 	initDisplay();
+	glutKeyboardFunc(keyboard);
+	glutSpecialFunc(special);
 	SavePoints();
 //	FindArc();
 	GenerateBSpline();
@@ -520,32 +526,88 @@ Point GetPrevpoint(int count)
 
 double LinearInterpolation(Point p, Point p1, double arcLength)
 {
-	double val = p.u + (arcLength - p.commArcLength) / (p1.commArcLength - p.commArcLength) * (p1.u - p.u);
+	double val = p.u + ((p1.u - p.u)/ (p1.commArcLength - p.commArcLength)) * (arcLength - p.commArcLength);
 	return val;
 }
 
+
+void keyboard(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'c':
+		sinabolic = true;
+		break;
+	case 'b':
+		sinabolic = false;
+		parabolic = false;
+		break;
+
+	case 'd':
+		sinabolic = false;
+		parabolic = true;
+		break;
+
+	default:
+		break;
+	}
+	
+
+}
+void special(int special_key, int x, int y)
+{
+	switch (special_key)
+	{
+	case GLUT_KEY_F1:
+		sinabolic = true;
+
+		break;
+
+	
+	}
+}
 
 void DrawSphere(int frame)
 {
 	std::list<Point>::iterator it;
 	int count = 1;
 	int sequenceNo = 0;
-
-	double d = (frame*globcommArcLength) / 300;	
-	Point subPoint  = GetArc(d);
-	Point subPoint1 = GetPrevpoint(subPoint.count-1);
-	if (subPoint.parent != subPoint1.parent)
+	double d = 0;
+	if (sinabolic)
 	{
-		subPoint.u = 1.0;
+		double fv = (frame/300.0);
+		double v = ((fv*3.14));
+		d = (v)-(3.14 / 2);
+		d = sin(d);
+		
+		d = (d*100) / 2;
 	}
-	double u = LinearInterpolation(subPoint1, subPoint, d);
-	int parent = subPoint1.parent;	
+	else if (parabolic)
+	{
+		d = ((1 / 6) / 2) + ((5 / 6) - (1 / 6)) + (1 - (5 / 6) / 2);
+		d = 1 / d;
+	}
+	else {
+	 d = (frame*globcommArcLength) / 300;	
 
-	
-	Point p = GetPoint(parent);
-	Point p1= GetPoint(p.sequence + 1);
-		Point p2 = GetPoint(p.sequence +2);
-		Point p3 = GetPoint(p.sequence +3);
+	}
+
+		if (d > 0 && d < globcommArcLength) {		Point subPoint = GetArc(d);
+
+
+		Point subPoint1 = GetPrevpoint(subPoint.count - 1);
+		if (subPoint.parent != subPoint1.parent)
+		{
+			subPoint.u = 1.0;
+		}
+		double u = LinearInterpolation(subPoint1, subPoint, d);
+		int parent = subPoint1.parent;
+
+
+		Point p = GetPoint(parent);
+		Point p1 = GetPoint(p.sequence + 1);
+		Point p2 = GetPoint(p.sequence + 2);
+		Point p3 = GetPoint(p.sequence + 3);
 
 		double b0 = calculateB0(u)*p.x;
 		double b1 = calculateB1(u)*p1.x;
@@ -569,7 +631,7 @@ void DrawSphere(int frame)
 		double y = by0 + by1 + by2 + by3;
 		vel.x = x;
 		vel.y = y;
-
+	}
 }
 
 
